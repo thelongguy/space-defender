@@ -1,0 +1,3267 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Space Defender</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #020617;
+    color: white;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+}
+
+canvas {
+    display: block;
+    margin: 15px auto;
+    border: 3px solid #00eaff;
+    border-radius: 12px;
+    box-shadow: 0 0 35px #00eaff;
+}
+
+.screen {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 5, 20, 0.96);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+
+#gameOver,
+#shop {
+    display: none;
+}
+
+h1 {
+    font-size: 58px;
+    color: #00eaff;
+    text-shadow: 0 0 25px #00eaff;
+    margin: 10px;
+}
+
+h2 {
+    color: #ff416c;
+    font-size: 40px;
+}
+
+button {
+    margin: 7px;
+    padding: 12px 25px;
+    font-size: 17px;
+    font-weight: bold;
+    color: white;
+    background: linear-gradient(45deg, #0066ff, #00c6ff);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 0 15px #008cff;
+    transition: 0.15s;
+}
+
+button:hover {
+    transform: scale(1.05);
+    filter: brightness(1.2);
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.info {
+    color: #bbb;
+    font-size: 18px;
+}
+
+/* =========================
+   HANGAR
+========================= */
+
+.hangar {
+    width: 95%;
+    max-width: 1100px;
+    max-height: 92vh;
+    overflow-y: auto;
+    background: linear-gradient(
+        145deg,
+        #0b1530,
+        #111d42
+    );
+    border: 2px solid #00eaff;
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow:
+        0 0 30px #00eaff,
+        inset 0 0 30px rgba(0,234,255,0.08);
+}
+
+.hangarHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #245;
+    padding-bottom: 12px;
+}
+
+.hangarHeader h2 {
+    margin: 0;
+    color: #00eaff;
+}
+
+.coins {
+    color: #ffd700;
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.shipGrid {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fit, minmax(210px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.shipCard {
+    position: relative;
+    background: #071128;
+    border: 2px solid #23345f;
+    border-radius: 15px;
+    padding: 15px;
+    text-align: center;
+    transition: 0.2s;
+}
+
+.shipCard:hover {
+    border-color: #00eaff;
+    transform: translateY(-3px);
+}
+
+.shipCard.selected {
+    border-color: #00ff88;
+    box-shadow: 0 0 20px #00ff88;
+}
+
+.shipPreview {
+    height: 120px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.shipIcon {
+    font-size: 70px;
+    filter: drop-shadow(0 0 15px #00eaff);
+}
+
+.shipName {
+    font-size: 21px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.rarity {
+    font-weight: bold;
+    margin: 5px;
+}
+
+.normal {
+    color: #aaa;
+}
+
+.selten {
+    color: #00ff88;
+}
+
+.episch {
+    color: #a855f7;
+}
+
+.legendär {
+    color: #ffd700;
+}
+
+.locked {
+    opacity: 0.45;
+}
+
+.stats {
+    text-align: left;
+    color: #bbb;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.statBar {
+    height: 7px;
+    background: #111827;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.statFill {
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        #0066ff,
+        #00eaff
+    );
+}
+
+.upgradeBox {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #365;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.2);
+}
+
+.upgradeBox h3 {
+    color: #00eaff;
+}
+
+.small {
+    font-size: 13px;
+    color: #999;
+}
+
+hr {
+    border: 0;
+    border-top: 1px solid #284;
+    margin: 18px 0;
+}
+
+.powerupInfo {
+    color: #ffdf5d;
+    font-size: 15px;
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media(max-width:700px) {
+
+    h1 {
+        font-size: 38px;
+    }
+
+    .hangar {
+        padding: 12px;
+    }
+
+    button {
+        font-size: 14px;
+        padding: 10px 16px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<!-- =========================
+     START
+========================= -->
+
+<div id="startScreen" class="screen">
+
+    <h1>SPACE DEFENDER</h1>
+
+    <p>🌌 Verteidige die Galaxie!</p>
+
+    <p class="info">
+        A/D oder ←/→ = Bewegen<br>
+        Leertaste = Schießen<br>
+        S = Hangar öffnen
+    </p>
+
+    <button onclick="startGame()">
+        🚀 SPIEL STARTEN
+    </button>
+
+    <button onclick="openHangar()">
+        🛸 HANGAR
+    </button>
+
+</div>
+
+
+<!-- =========================
+     GAME OVER
+========================= -->
+
+<div id="gameOver" class="screen">
+
+    <h2>💥 GAME OVER</h2>
+
+    <p id="finalScore">
+        Punkte: 0
+    </p>
+
+    <button onclick="startGame()">
+        🚀 NOCHMAL SPIELEN
+    </button>
+
+    <button onclick="openHangar()">
+        🛸 HANGAR
+    </button>
+
+</div>
+
+
+<!-- =========================
+     HANGAR
+========================= -->
+
+<div id="shop" class="screen">
+
+    <div class="hangar">
+
+        <div class="hangarHeader">
+
+            <h2>🛸 RAUMSCHIFF-HANGAR</h2>
+
+            <div class="coins">
+                🪙 <span id="hangarCoins">0</span>
+            </div>
+
+        </div>
+
+
+        <p>
+            Wähle dein Raumschiff und verbessere es.
+        </p>
+
+
+        <div id="shipGrid"
+             class="shipGrid">
+        </div>
+
+
+        <div class="upgradeBox">
+
+            <h3>
+                🔧 SCHIFF-UPGRADES
+            </h3>
+
+            <p id="selectedShipInfo">
+                Kein Schiff ausgewählt.
+            </p>
+
+            <button onclick="upgradeSpeed()">
+                ⚡ Geschwindigkeit verbessern
+            </button>
+
+            <button onclick="upgradeHealth()">
+                ❤️ Leben verbessern
+            </button>
+
+            <button onclick="upgradeWeapon()">
+                🔥 Waffen verbessern
+            </button>
+
+            <p class="small">
+                Jeder Kauf erhöht das Level des aktuellen Schiffs.
+            </p>
+
+        </div>
+
+
+        <div class="upgradeBox">
+
+            <h3>
+                ❤️ LEBEN
+            </h3>
+
+            <p>
+                Zusätzliche Leben kosten
+                <b>30 🪙</b>.
+            </p>
+
+            <button onclick="buyLife()">
+                ❤️ +1 Leben kaufen – 30 🪙
+            </button>
+
+        </div>
+
+
+        <hr>
+
+
+        <button onclick="closeHangar()">
+            ▶️ ZURÜCK ZUM SPIEL
+        </button>
+
+    </div>
+
+</div>
+
+
+<canvas id="spiel"
+        width="900"
+        height="600">
+</canvas>
+
+
+<script>
+
+/* =====================================================
+   CANVAS
+===================================================== */
+
+const canvas =
+    document.getElementById("spiel");
+
+const ctx =
+    canvas.getContext("2d");
+
+
+/* =====================================================
+   SPIELDATEN
+===================================================== */
+
+let spieler;
+
+let kugeln = [];
+let gegner = [];
+let explosionen = [];
+let sterne = [];
+let powerups = [];
+
+let punkte = 0;
+let muenzen = 0;
+
+let leben = 3;
+let maxLeben = 3;
+
+let level = 1;
+
+let waffe = 0;
+
+let spielLaeuft = false;
+
+let gegnerTimer;
+
+let tasten = {};
+
+
+/* =====================================================
+   POWERUPS
+===================================================== */
+
+let powerAktiv = {
+    rapid: 0,
+    shield: 0,
+    mega: 0,
+    speed: 0
+};
+
+
+/* =====================================================
+   SCHIFFE
+===================================================== */
+
+const schiffe = {
+
+    jaeger: {
+
+        name: "Jäger",
+
+        preis: 0,
+
+        rarity: "Normal",
+
+        farbe: "#00eaff",
+
+        icon: "🚀",
+
+        speed: 7,
+
+        leben: 3,
+
+        schuss: 10
+    },
+
+
+    interceptor: {
+
+        name: "Interceptor",
+
+        preis: 50,
+
+        rarity: "Selten",
+
+        farbe: "#ffff00",
+
+        icon: "⚡",
+
+        speed: 11,
+
+        leben: 2,
+
+        schuss: 11
+    },
+
+
+    bomber: {
+
+        name: "Bomber",
+
+        preis: 100,
+
+        rarity: "Selten",
+
+        farbe: "#ff416c",
+
+        icon: "💥",
+
+        speed: 4,
+
+        leben: 5,
+
+        schuss: 8
+    },
+
+
+    tank: {
+
+        name: "Tank",
+
+        preis: 150,
+
+        rarity: "Episch",
+
+        farbe: "#00ff66",
+
+        icon: "🛡️",
+
+        speed: 3,
+
+        leben: 7,
+
+        schuss: 8
+    },
+
+
+    plasma: {
+
+        name: "Plasma",
+
+        preis: 200,
+
+        rarity: "Episch",
+
+        farbe: "#bf00ff",
+
+        icon: "🔮",
+
+        speed: 7,
+
+        leben: 4,
+
+        schuss: 15
+    },
+
+
+    titan: {
+
+        name: "Titan",
+
+        preis: 400,
+
+        rarity: "Legendär",
+
+        farbe: "#ffd700",
+
+        icon: "👑",
+
+        speed: 5,
+
+        leben: 10,
+
+        schuss: 12
+    },
+
+
+    phantom: {
+
+        name: "Phantom",
+
+        preis: 600,
+
+        rarity: "Legendär",
+
+        farbe: "#ff00ff",
+
+        icon: "👻",
+
+        speed: 13,
+
+        leben: 4,
+
+        schuss: 18
+    }
+
+};
+
+
+/* =====================================================
+   SPIELER-SPEICHER
+===================================================== */
+
+let gespeichert =
+    JSON.parse(
+        localStorage.getItem(
+            "spaceDefenderSave"
+        )
+    );
+
+
+if (!gespeichert) {
+
+    gespeichert = {
+
+        muenzen: 0,
+
+        gekauft: {
+            jaeger: true
+        },
+
+        schiffe: {},
+
+        aktuellesSchiff: "jaeger"
+    };
+}
+
+
+let gekauft =
+    gespeichert.gekauft || {
+        jaeger: true
+    };
+
+
+let schiffDaten =
+    gespeichert.schiffe || {};
+
+
+let aktuellesSchiff =
+    gespeichert.aktuellesSchiff ||
+    "jaeger";
+
+
+muenzen =
+    gespeichert.muenzen || 0;
+
+
+/* =====================================================
+   SPEICHERN
+===================================================== */
+
+function speichern() {
+
+    localStorage.setItem(
+
+        "spaceDefenderSave",
+
+        JSON.stringify({
+
+            muenzen: muenzen,
+
+            gekauft: gekauft,
+
+            schiffe: schiffDaten,
+
+            aktuellesSchiff:
+                aktuellesSchiff
+        })
+    );
+}
+
+
+/* =====================================================
+   SCHIFFDATEN
+===================================================== */
+
+function datenVonSchiff(id) {
+
+    if (!schiffDaten[id]) {
+
+        schiffDaten[id] = {
+
+            level: 1,
+
+            speedUp: 0,
+
+            healthUp: 0,
+
+            weaponUp: 0
+        };
+    }
+
+    return schiffDaten[id];
+}
+
+
+/* =====================================================
+   STERNE
+===================================================== */
+
+for (
+    let i = 0;
+    i < 180;
+    i++
+) {
+
+    sterne.push({
+
+        x:
+            Math.random() *
+            canvas.width,
+
+        y:
+            Math.random() *
+            canvas.height,
+
+        groesse:
+            Math.random() * 2 + 1,
+
+        speed:
+            Math.random() * 1.5 + 0.5
+    });
+}
+
+
+/* =====================================================
+   SCHIFF ERSTELLEN
+===================================================== */
+
+function erstelleSpieler() {
+
+    let basis =
+        schiffe[aktuellesSchiff];
+
+    let daten =
+        datenVonSchiff(
+            aktuellesSchiff
+        );
+
+
+    return {
+
+        x:
+            canvas.width / 2 - 25,
+
+        y:
+            canvas.height - 80,
+
+        breite: 50,
+
+        hoehe: 40,
+
+        speed:
+            basis.speed +
+            daten.speedUp * 0.8,
+
+        schussSpeed:
+            basis.schuss +
+            daten.weaponUp * 1.5
+    };
+}
+
+
+/* =====================================================
+   SPIEL START
+===================================================== */
+
+function startGame() {
+
+    spieler =
+        erstelleSpieler();
+
+    kugeln = [];
+    gegner = [];
+    explosionen = [];
+    powerups = [];
+
+    punkte = 0;
+
+    level = 1;
+
+    waffe = 0;
+
+    powerAktiv = {
+
+        rapid: 0,
+
+        shield: 0,
+
+        mega: 0,
+
+        speed: 0
+    };
+
+
+    let basis =
+        schiffe[aktuellesSchiff];
+
+    let daten =
+        datenVonSchiff(
+            aktuellesSchiff
+        );
+
+
+    maxLeben =
+        basis.leben +
+        daten.healthUp;
+
+
+    leben = maxLeben;
+
+
+    spielLaeuft = true;
+
+
+    document.getElementById(
+        "startScreen"
+    ).style.display = "none";
+
+
+    document.getElementById(
+        "gameOver"
+    ).style.display = "none";
+
+
+    document.getElementById(
+        "shop"
+    ).style.display = "none";
+
+
+    clearInterval(
+        gegnerTimer
+    );
+
+
+    gegnerTimer =
+        setInterval(
+            neuerGegner,
+            850
+        );
+}
+
+
+/* =====================================================
+   TASTEN
+===================================================== */
+
+document.addEventListener(
+    "keydown",
+    function(e) {
+
+        tasten[
+            e.key.toLowerCase()
+        ] = true;
+
+
+        if (
+            e.code === "Space"
+        ) {
+
+            e.preventDefault();
+
+
+            if (
+                spielLaeuft
+            ) {
+
+                schiessen();
+            }
+        }
+
+
+        if (
+            e.key.toLowerCase()
+            === "s"
+        ) {
+
+            if (
+                spielLaeuft
+            ) {
+
+                openHangar();
+            }
+        }
+    }
+);
+
+
+document.addEventListener(
+    "keyup",
+    function(e) {
+
+        tasten[
+            e.key.toLowerCase()
+        ] = false;
+    }
+);
+
+
+/* =====================================================
+   SCHIESSEN
+===================================================== */
+
+function schiessen() {
+
+    if (!spieler)
+        return;
+
+
+    let mitte =
+        spieler.x +
+        spieler.breite / 2;
+
+
+    let speed =
+        spieler.schussSpeed;
+
+
+    let rapid =
+        powerAktiv.rapid > 0;
+
+
+    let mega =
+        powerAktiv.mega > 0;
+
+
+    if (
+        waffe === 0 &&
+        !rapid
+    ) {
+
+        kugelErstellen(
+            mitte - 4,
+            spieler.y,
+            speed,
+            mega
+        );
+    }
+
+
+    else if (
+        waffe === 1 ||
+        rapid
+    ) {
+
+        kugelErstellen(
+            mitte - 15,
+            spieler.y,
+            speed,
+            mega
+        );
+
+        kugelErstellen(
+            mitte + 7,
+            spieler.y,
+            speed,
+            mega
+        );
+    }
+
+
+    else {
+
+        kugelErstellen(
+            mitte - 4,
+            spieler.y,
+            speed,
+            mega
+        );
+
+        kugelErstellen(
+            mitte - 18,
+            spieler.y + 8,
+            speed,
+            mega
+        );
+
+        kugelErstellen(
+            mitte + 10,
+            spieler.y + 8,
+            speed,
+            mega
+        );
+    }
+}
+
+
+function kugelErstellen(
+    x,
+    y,
+    speed,
+    mega
+) {
+
+    kugeln.push({
+
+        x: x,
+
+        y: y,
+
+        breite:
+            mega ? 16 : 8,
+
+        hoehe:
+            mega ? 28 : 20,
+
+        speed:
+            mega ? speed * 1.3 : speed,
+
+        mega: mega
+    });
+}
+
+
+/* =====================================================
+   AUTOMATISCHES RAPID FIRE
+===================================================== */
+
+let letzterSchuss = 0;
+
+
+function rapidFireUpdate() {
+
+    if (
+        powerAktiv.rapid <= 0
+    )
+        return;
+
+
+    let jetzt =
+        Date.now();
+
+
+    if (
+        jetzt -
+        letzterSchuss >
+        180
+    ) {
+
+        schiessen();
+
+        letzterSchuss =
+            jetzt;
+    }
+}
+
+
+/* =====================================================
+   GEGNER
+===================================================== */
+
+function neuerGegner() {
+
+    if (!spielLaeuft)
+        return;
+
+
+    let typ =
+        Math.floor(
+            Math.random() * 3
+        );
+
+
+    let groesse = 40;
+
+    let speed = 2;
+
+    let lebenGegner = 1;
+
+
+    if (typ === 0) {
+
+        groesse = 40;
+
+        speed =
+            1.5 +
+            level * 0.15;
+
+        lebenGegner = 1;
+    }
+
+
+    if (typ === 1) {
+
+        groesse = 30;
+
+        speed =
+            3 +
+            level * 0.2;
+
+        lebenGegner = 1;
+    }
+
+
+    if (typ === 2) {
+
+        groesse = 60;
+
+        speed =
+            1 +
+            level * 0.1;
+
+        lebenGegner = 3;
+    }
+
+
+    gegner.push({
+
+        x:
+            Math.random() *
+            (canvas.width - groesse),
+
+        y: -groesse,
+
+        breite: groesse,
+
+        hoehe: groesse,
+
+        speed: speed,
+
+        leben: lebenGegner,
+
+        maxLeben:
+            lebenGegner,
+
+        typ: typ
+    });
+}
+
+
+/* =====================================================
+   POWERUP ERSTELLEN
+===================================================== */
+
+function erstellePowerup(
+    x,
+    y
+) {
+
+    let typen = [
+
+        "rapid",
+
+        "shield",
+
+        "mega",
+
+        "speed",
+
+        "life"
+    ];
+
+
+    let typ =
+        typen[
+            Math.floor(
+                Math.random() *
+                typen.length
+            )
+        ];
+
+
+    powerups.push({
+
+        x: x,
+
+        y: y,
+
+        typ: typ,
+
+        size: 25,
+
+        speed: 2.5
+    });
+}
+
+
+/* =====================================================
+   POWERUP AKTIVIEREN
+===================================================== */
+
+function powerupSammeln(
+    typ
+) {
+
+    if (
+        typ === "rapid"
+    ) {
+
+        powerAktiv.rapid =
+            5000;
+    }
+
+
+    if (
+        typ === "shield"
+    ) {
+
+        powerAktiv.shield =
+            5000;
+    }
+
+
+    if (
+        typ === "mega"
+    ) {
+
+        powerAktiv.mega =
+            5000;
+    }
+
+
+    if (
+        typ === "speed"
+    ) {
+
+        powerAktiv.speed =
+            5000;
+    }
+
+
+    if (
+        typ === "life"
+    ) {
+
+        leben++;
+
+        maxLeben =
+            Math.max(
+                maxLeben,
+                leben
+            );
+    }
+}
+
+
+/* =====================================================
+   EXPLOSION
+===================================================== */
+
+function explosion(
+    x,
+    y
+) {
+
+    for (
+        let i = 0;
+        i < 25;
+        i++
+    ) {
+
+        explosionen.push({
+
+            x: x,
+
+            y: y,
+
+            dx:
+                (Math.random() - 0.5) * 7,
+
+            dy:
+                (Math.random() - 0.5) * 7,
+
+            leben: 30
+        });
+    }
+}
+
+
+/* =====================================================
+   UPDATE
+===================================================== */
+
+function update() {
+
+    if (!spielLaeuft)
+        return;
+
+
+    /* ======================
+       POWERUP ZEIT
+    ====================== */
+
+    let delta = 16.67;
+
+
+    powerAktiv.rapid =
+        Math.max(
+            0,
+            powerAktiv.rapid - delta
+        );
+
+
+    powerAktiv.shield =
+        Math.max(
+            0,
+            powerAktiv.shield - delta
+        );
+
+
+    powerAktiv.mega =
+        Math.max(
+            0,
+            powerAktiv.mega - delta
+        );
+
+
+    powerAktiv.speed =
+        Math.max(
+            0,
+            powerAktiv.speed - delta
+        );
+
+
+    /* ======================
+       SPIELER
+    ====================== */
+
+    let aktuelleGeschwindigkeit =
+        spieler.speed;
+
+
+    if (
+        powerAktiv.speed > 0
+    ) {
+
+        aktuelleGeschwindigkeit *= 1.8;
+    }
+
+
+    if (
+        tasten["a"] ||
+        tasten["arrowleft"]
+    ) {
+
+        spieler.x -=
+            aktuelleGeschwindigkeit;
+    }
+
+
+    if (
+        tasten["d"] ||
+        tasten["arrowright"]
+    ) {
+
+        spieler.x +=
+            aktuelleGeschwindigkeit;
+    }
+
+
+    if (spieler.x < 0)
+        spieler.x = 0;
+
+
+    if (
+        spieler.x >
+        canvas.width -
+        spieler.breite
+    ) {
+
+        spieler.x =
+            canvas.width -
+            spieler.breite;
+    }
+
+
+    /* ======================
+       KUGELN
+    ====================== */
+
+    for (
+        let i = kugeln.length - 1;
+        i >= 0;
+        i--
+    ) {
+
+        kugeln[i].y -=
+            kugeln[i].speed;
+
+
+        if (
+            kugeln[i].y < -40
+        ) {
+
+            kugeln.splice(
+                i,
+                1
+            );
+        }
+    }
+
+
+    /* ======================
+       GEGNER
+    ====================== */
+
+    for (
+        let i = gegner.length - 1;
+        i >= 0;
+        i--
+    ) {
+
+        let g =
+            gegner[i];
+
+
+        g.y +=
+            g.speed;
+
+
+        /* Kollision Spieler */
+
+        if (
+
+            g.x <
+            spieler.x +
+            spieler.breite &&
+
+            g.x +
+            g.breite >
+            spieler.x &&
+
+            g.y <
+            spieler.y +
+            spieler.hoehe &&
+
+            g.y +
+            g.hoehe >
+            spieler.y
+
+        ) {
+
+            explosion(
+
+                g.x +
+                g.breite / 2,
+
+                g.y +
+                g.hoehe / 2
+            );
+
+
+            gegner.splice(
+                i,
+                1
+            );
+
+
+            if (
+                powerAktiv.shield <= 0
+            ) {
+
+                leben--;
+
+                if (
+                    leben <= 0
+                ) {
+
+                    gameOver();
+                }
+            }
+
+            continue;
+        }
+
+
+        if (
+            g.y >
+            canvas.height + 100
+        ) {
+
+            gegner.splice(
+                i,
+                1
+            );
+        }
+    }
+
+
+    /* ======================
+       TREFFER
+    ====================== */
+
+    for (
+        let i = kugeln.length - 1;
+        i >= 0;
+        i--
+    ) {
+
+        for (
+            let j =
+                gegner.length - 1;
+            j >= 0;
+            j--
+        ) {
+
+            let k =
+                kugeln[i];
+
+            let g =
+                gegner[j];
+
+
+            if (
+
+                k.x <
+                g.x +
+                g.breite &&
+
+                k.x +
+                k.breite >
+                g.x &&
+
+                k.y <
+                g.y +
+                g.hoehe &&
+
+                k.y +
+                k.hoehe >
+                g.y
+
+            ) {
+
+                g.leben -=
+                    k.mega ? 2 : 1;
+
+
+                kugeln.splice(
+                    i,
+                    1
+                );
+
+
+                if (
+                    g.leben <= 0
+                ) {
+
+                    explosion(
+
+                        g.x +
+                        g.breite / 2,
+
+                        g.y +
+                        g.hoehe / 2
+                    );
+
+
+                    /* Powerup-Chance */
+
+                    if (
+                        Math.random() <
+                        0.15
+                    ) {
+
+                        erstellePowerup(
+
+                            g.x +
+                            g.breite / 2,
+
+                            g.y +
+                            g.hoehe / 2
+                        );
+                    }
+
+
+                    gegner.splice(
+                        j,
+                        1
+                    );
+
+
+                    punkte +=
+                        g.typ === 2
+                        ? 30
+                        : 10;
+
+
+                    muenzen +=
+                        g.typ === 2
+                        ? 3
+                        : 1;
+
+
+                    level =
+                        Math.floor(
+                            punkte / 100
+                        ) + 1;
+
+
+                    speichern();
+                }
+
+
+                break;
+            }
+        }
+    }
+
+
+    /* ======================
+       POWERUPS
+    ====================== */
+
+    for (
+        let i =
+            powerups.length - 1;
+        i >= 0;
+        i--
+    ) {
+
+        let p =
+            powerups[i];
+
+
+        p.y +=
+            p.speed;
+
+
+        if (
+
+            p.x >
+            spieler.x &&
+
+            p.x <
+            spieler.x +
+            spieler.breite &&
+
+            p.y >
+            spieler.y - 20 &&
+
+            p.y <
+            spieler.y +
+            spieler.hoehe
+
+        ) {
+
+            powerupSammeln(
+                p.typ
+            );
+
+
+            powerups.splice(
+                i,
+                1
+            );
+
+
+            continue;
+        }
+
+
+        if (
+            p.y >
+            canvas.height + 50
+        ) {
+
+            powerups.splice(
+                i,
+                1
+            );
+        }
+    }
+
+
+    /* ======================
+       EXPLOSIONEN
+    ====================== */
+
+    for (
+        let i =
+            explosionen.length - 1;
+        i >= 0;
+        i--
+    ) {
+
+        let p =
+            explosionen[i];
+
+
+        p.x += p.dx;
+        p.y += p.dy;
+
+        p.leben--;
+
+
+        if (
+            p.leben <= 0
+        ) {
+
+            explosionen.splice(
+                i,
+                1
+            );
+        }
+    }
+
+
+    /* ======================
+       STERNE
+    ====================== */
+
+    for (
+        let stern of sterne
+    ) {
+
+        stern.y +=
+            stern.speed;
+
+
+        if (
+            stern.y >
+            canvas.height
+        ) {
+
+            stern.y = 0;
+
+            stern.x =
+                Math.random() *
+                canvas.width;
+        }
+    }
+
+
+    rapidFireUpdate();
+}
+
+
+/* =====================================================
+   POWERUP ZEICHNEN
+===================================================== */
+
+function zeichnePowerup(
+    p
+) {
+
+    let daten = {
+
+        rapid: {
+            symbol: "🔥",
+            farbe: "#ff4500"
+        },
+
+        shield: {
+            symbol: "🛡️",
+            farbe: "#00eaff"
+        },
+
+        mega: {
+            symbol: "💥",
+            farbe: "#ff00ff"
+        },
+
+        speed: {
+            symbol: "⚡",
+            farbe: "#ffff00"
+        },
+
+        life: {
+            symbol: "❤️",
+            farbe: "#ff416c"
+        }
+    }[p.typ];
+
+
+    ctx.save();
+
+    ctx.shadowColor =
+        daten.farbe;
+
+    ctx.shadowBlur = 25;
+
+    ctx.fillStyle =
+        daten.farbe;
+
+
+    ctx.beginPath();
+
+    ctx.arc(
+        p.x,
+        p.y,
+        p.size,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+
+    ctx.shadowBlur = 0;
+
+    ctx.font = "20px Arial";
+
+    ctx.textAlign = "center";
+
+    ctx.textBaseline = "middle";
+
+    ctx.fillText(
+        daten.symbol,
+        p.x,
+        p.y
+    );
+
+
+    ctx.restore();
+}
+
+
+/* =====================================================
+   SPIELER ZEICHNEN
+===================================================== */
+
+function zeichneSpieler() {
+
+    let basis =
+        schiffe[
+            aktuellesSchiff
+        ];
+
+
+    ctx.save();
+
+
+    ctx.translate(
+
+        spieler.x +
+        spieler.breite / 2,
+
+        spieler.y +
+        spieler.hoehe / 2
+    );
+
+
+    /* Schild */
+
+    if (
+        powerAktiv.shield > 0
+    ) {
+
+        ctx.strokeStyle =
+            "#00eaff";
+
+        ctx.lineWidth = 4;
+
+        ctx.shadowColor =
+            "#00eaff";
+
+        ctx.shadowBlur = 30;
+
+        ctx.beginPath();
+
+        ctx.arc(
+            0,
+            0,
+            38,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.stroke();
+    }
+
+
+    /* Triebwerk */
+
+    ctx.shadowColor =
+        "#ff9900";
+
+    ctx.shadowBlur = 20;
+
+    ctx.fillStyle =
+        "#ff7b00";
+
+
+    let flamme =
+        25 +
+        Math.random() * 15;
+
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+        -10,
+        15
+    );
+
+    ctx.lineTo(
+        0,
+        15 + flamme
+    );
+
+    ctx.lineTo(
+        10,
+        15
+    );
+
+    ctx.closePath();
+
+    ctx.fill();
+
+
+    /* Schiff */
+
+    ctx.shadowColor =
+        basis.farbe;
+
+    ctx.shadowBlur = 25;
+
+    ctx.fillStyle =
+        basis.farbe;
+
+
+    if (
+        aktuellesSchiff === "jaeger"
+    ) {
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            0,
+            -25
+        );
+
+        ctx.lineTo(
+            27,
+            20
+        );
+
+        ctx.lineTo(
+            0,
+            10
+        );
+
+        ctx.lineTo(
+            -27,
+            20
+        );
+
+        ctx.closePath();
+
+        ctx.fill();
+    }
+
+
+    else if (
+        aktuellesSchiff ===
+        "interceptor"
+    ) {
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            0,
+            -30
+        );
+
+        ctx.lineTo(
+            12,
+            0
+        );
+
+        ctx.lineTo(
+            35,
+            18
+        );
+
+        ctx.lineTo(
+            8,
+            12
+        );
+
+        ctx.lineTo(
+            0,
+            25
+        );
+
+        ctx.lineTo(
+            -8,
+            12
+        );
+
+        ctx.lineTo(
+            -35,
+            18
+        );
+
+        ctx.lineTo(
+            -12,
+            0
+        );
+
+        ctx.closePath();
+
+        ctx.fill();
+    }
+
+
+    else if (
+        aktuellesSchiff ===
+        "bomber"
+    ) {
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            0,
+            -22
+        );
+
+        ctx.lineTo(
+            38,
+            18
+        );
+
+        ctx.lineTo(
+            22,
+            27
+        );
+
+        ctx.lineTo(
+            0,
+            15
+        );
+
+        ctx.lineTo(
+            -22,
+            27
+        );
+
+        ctx.lineTo(
+            -38,
+            18
+        );
+
+        ctx.closePath();
+
+        ctx.fill();
+    }
+
+
+    else if (
+        aktuellesSchiff ===
+        "tank"
+    ) {
+
+        ctx.fillRect(
+            -30,
+            -20,
+            60,
+            40
+        );
+
+        ctx.fillRect(
+            -12,
+            -32,
+            24,
+            45
+        );
+    }
+
+
+    else if (
+        aktuellesSchiff ===
+        "plasma"
+    ) {
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            0,
+            -32
+        );
+
+        ctx.lineTo(
+            22,
+            -5
+        );
+
+        ctx.lineTo(
+            15,
+            28
+        );
+
+        ctx.lineTo(
+            0,
+            12
+        );
+
+        ctx.lineTo(
+            -15,
+            28
+        );
+
+        ctx.lineTo(
+            -22,
+            -5
+        );
+
+        ctx.closePath();
+
+        ctx.fill();
+
+        ctx.fillStyle =
+            "#ffffff";
+
+        ctx.beginPath();
+
+        ctx.arc(
+            0,
+            0,
+            8,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+    }
+
+
+    else {
+
+        /* Titan / Phantom */
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+            0,
+            -35
+        );
+
+        ctx.lineTo(
+            30,
+            25
+        );
+
+        ctx.lineTo(
+            10,
+            17
+        );
+
+        ctx.lineTo(
+            0,
+            30
+        );
+
+        ctx.lineTo(
+            -10,
+            17
+        );
+
+        ctx.lineTo(
+            -30,
+            25
+        );
+
+        ctx.closePath();
+
+        ctx.fill();
+    }
+
+
+    ctx.restore();
+}
+
+
+/* =====================================================
+   ZEICHNEN
+===================================================== */
+
+function zeichnen() {
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    /* Hintergrund */
+
+    let bg =
+        ctx.createLinearGradient(
+            0,
+            0,
+            0,
+            canvas.height
+        );
+
+
+    bg.addColorStop(
+        0,
+        "#020617"
+    );
+
+
+    bg.addColorStop(
+        1,
+        "#111b40"
+    );
+
+
+    ctx.fillStyle =
+        bg;
+
+
+    ctx.fillRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    /* Sterne */
+
+    for (
+        let stern of sterne
+    ) {
+
+        ctx.fillStyle =
+            "white";
+
+        ctx.globalAlpha =
+            0.4 +
+            Math.random() * 0.6;
+
+        ctx.fillRect(
+
+            stern.x,
+
+            stern.y,
+
+            stern.groesse,
+
+            stern.groesse
+        );
+    }
+
+
+    ctx.globalAlpha = 1;
+
+
+    if (!spieler)
+        return;
+
+
+    /* Schiff */
+
+    zeichneSpieler();
+
+
+    /* Kugeln */
+
+    for (
+        let k of kugeln
+    ) {
+
+        ctx.shadowColor =
+            k.mega
+            ? "#ff00ff"
+            : "#ffff00";
+
+
+        ctx.shadowBlur =
+            k.mega
+            ? 25
+            : 15;
+
+
+        ctx.fillStyle =
+            k.mega
+            ? "#ff00ff"
+            : "#ffff55";
+
+
+        ctx.fillRect(
+
+            k.x,
+
+            k.y,
+
+            k.breite,
+
+            k.hoehe
+        );
+    }
+
+
+    /* Gegner */
+
+    for (
+        let g of gegner
+    ) {
+
+        ctx.save();
+
+
+        ctx.translate(
+
+            g.x +
+            g.breite / 2,
+
+            g.y +
+            g.hoehe / 2
+        );
+
+
+        let farbe =
+            g.typ === 0
+            ? "#ff416c"
+            : g.typ === 1
+            ? "#9b5cff"
+            : "#ff8c00";
+
+
+        ctx.shadowColor =
+            farbe;
+
+
+        ctx.shadowBlur = 20;
+
+
+        ctx.fillStyle =
+            farbe;
+
+
+        ctx.beginPath();
+
+
+        ctx.arc(
+
+            0,
+            0,
+
+            g.breite / 2,
+
+            0,
+            Math.PI * 2
+        );
+
+
+        ctx.fill();
+
+
+        ctx.shadowBlur = 0;
+
+
+        /* Augen */
+
+        ctx.fillStyle =
+            "white";
+
+
+        ctx.beginPath();
+
+
+        ctx.arc(
+            -8,
+            -5,
+            5,
+            0,
+            Math.PI * 2
+        );
+
+
+        ctx.arc(
+            8,
+            -5,
+            5,
+            0,
+            Math.PI * 2
+        );
+
+
+        ctx.fill();
+
+
+        ctx.fillStyle =
+            "black";
+
+
+        ctx.beginPath();
+
+
+        ctx.arc(
+            -8,
+            -5,
+            2,
+            0,
+            Math.PI * 2
+        );
+
+
+        ctx.arc(
+            8,
+            -5,
+            2,
+            0,
+            Math.PI * 2
+        );
+
+
+        ctx.fill();
+
+
+        /* Lebensbalken */
+
+        if (
+            g.maxLeben > 1
+        ) {
+
+            ctx.fillStyle =
+                "red";
+
+
+            ctx.fillRect(
+                -25,
+                -g.breite / 2 - 12,
+                50,
+                5
+            );
+
+
+            ctx.fillStyle =
+                "#00ff66";
+
+
+            ctx.fillRect(
+
+                -25,
+
+                -g.breite / 2 - 12,
+
+                50 *
+                (
+                    g.leben /
+                    g.maxLeben
+                ),
+
+                5
+            );
+        }
+
+
+        ctx.restore();
+    }
+
+
+    /* Powerups */
+
+    for (
+        let p of powerups
+    ) {
+
+        zeichnePowerup(p);
+    }
+
+
+    /* Explosion */
+
+    for (
+        let p of explosionen
+    ) {
+
+        ctx.fillStyle =
+            "orange";
+
+
+        ctx.beginPath();
+
+
+        ctx.arc(
+            p.x,
+            p.y,
+            4,
+            0,
+            Math.PI * 2
+        );
+
+
+        ctx.fill();
+    }
+
+
+    /* HUD */
+
+    ctx.fillStyle =
+        "white";
+
+
+    ctx.font =
+        "bold 21px Arial";
+
+
+    ctx.fillText(
+        "⭐ " + punkte,
+        20,
+        30
+    );
+
+
+    ctx.fillText(
+        "🪙 " + muenzen,
+        140,
+        30
+    );
+
+
+    ctx.fillText(
+        "LEVEL " + level,
+        270,
+        30
+    );
+
+
+    ctx.fillText(
+        "🚀 " +
+        schiffe[
+            aktuellesSchiff
+        ].name,
+        410,
+        30
+    );
+
+
+    ctx.fillText(
+        "❤️".repeat(
+            Math.min(leben, 10)
+        ),
+        700,
+        30
+    );
+
+
+    /* Powerup HUD */
+
+    let py = 60;
+
+
+    let aktive = [
+
+        [
+            "🔥 Rapid Fire",
+            powerAktiv.rapid
+        ],
+
+        [
+            "🛡️ Schild",
+            powerAktiv.shield
+        ],
+
+        [
+            "💥 Mega-Schuss",
+            powerAktiv.mega
+        ],
+
+        [
+            "⚡ Speed",
+            powerAktiv.speed
+        ]
+    ];
+
+
+    for (
+        let [name, zeit]
+        of aktive
+    ) {
+
+        if (
+            zeit > 0
+        ) {
+
+            ctx.fillStyle =
+                "#ffff55";
+
+
+            ctx.fillText(
+
+                name +
+                ": " +
+                Math.ceil(
+                    zeit / 1000
+                ) +
+                "s",
+
+                20,
+                py
+            );
+
+
+            py += 25;
+        }
+    }
+}
+
+
+/* =====================================================
+   HANGAR ÖFFNEN
+===================================================== */
+
+function openHangar() {
+
+    spielLaeuft = false;
+
+    clearInterval(
+        gegnerTimer
+    );
+
+
+    document.getElementById(
+        "hangarCoins"
+    ).textContent =
+        muenzen;
+
+
+    zeichneHangar();
+
+
+    document.getElementById(
+        "shop"
+    ).style.display =
+        "flex";
+}
+
+
+/* =====================================================
+   HANGAR ZEICHNEN
+===================================================== */
+
+function zeichneHangar() {
+
+    let grid =
+        document.getElementById(
+            "shipGrid"
+        );
+
+
+    grid.innerHTML = "";
+
+
+    for (
+        let id in schiffe
+    ) {
+
+        let s =
+            schiffe[id];
+
+
+        let daten =
+            datenVonSchiff(id);
+
+
+        let istGekauft =
+            gekauft[id] === true;
+
+
+        let istAktiv =
+            aktuellesSchiff === id;
+
+
+        let karte =
+            document.createElement(
+                "div"
+            );
+
+
+        karte.className =
+            "shipCard";
+
+
+        if (istAktiv)
+            karte.classList.add(
+                "selected"
+            );
+
+
+        if (!istGekauft)
+            karte.classList.add(
+                "locked"
+            );
+
+
+        let rarityClass =
+            s.rarity
+                .toLowerCase()
+                .replace("ä", "ä");
+
+
+        karte.innerHTML = `
+
+            <div class="shipPreview">
+
+                <div class="shipIcon"
+                     style="color:${s.farbe}">
+                    ${s.icon}
+                </div>
+
+            </div>
+
+            <div class="shipName">
+                ${s.name}
+            </div>
+
+            <div class="rarity ${rarityClass}">
+                ${s.rarity}
+            </div>
+
+            <p>
+                ⭐ Level ${daten.level}
+            </p>
+
+            <div class="stats">
+
+                ⚡ Geschwindigkeit
+                ${s.speed + daten.speedUp * 0.8}
+
+                <div class="statBar">
+                    <div class="statFill"
+                         style="width:${Math.min(
+                             100,
+                             (s.speed +
+                             daten.speedUp * 0.8) * 6
+                         )}%">
+                    </div>
+                </div>
+
+
+                ❤️ Leben
+                ${s.leben + daten.healthUp}
+
+                <div class="statBar">
+                    <div class="statFill"
+                         style="width:${Math.min(
+                             100,
+                             (s.leben +
+                             daten.healthUp) * 9
+                         )}%">
+                    </div>
+                </div>
+
+
+                🔥 Schuss
+                ${s.schuss + daten.weaponUp * 1.5}
+
+                <div class="statBar">
+                    <div class="statFill"
+                         style="width:${Math.min(
+                             100,
+                             (s.schuss +
+                             daten.weaponUp * 1.5) * 5
+                         )}%">
+                    </div>
+                </div>
+
+            </div>
+
+        `;
+
+
+        let button =
+            document.createElement(
+                "button"
+            );
+
+
+        if (istGekauft) {
+
+            if (istAktiv) {
+
+                button.textContent =
+                    "✅ AUSGEWÄHLT";
+
+                button.disabled = true;
+
+            } else {
+
+                button.textContent =
+                    "🚀 AUSWÄHLEN";
+
+                button.onclick =
+                    () => selectShip(id);
+            }
+
+        } else {
+
+            button.textContent =
+                "🪙 KAUFEN – " +
+                s.preis;
+
+            button.onclick =
+                () => buyShip(id);
+        }
+
+
+        karte.appendChild(
+            button
+        );
+
+
+        grid.appendChild(
+            karte
+        );
+    }
+
+
+    aktualisiereUpgradeText();
+}
+
+
+/* =====================================================
+   SCHIFF KAUFEN
+===================================================== */
+
+function buyShip(id) {
+
+    let s =
+        schiffe[id];
+
+
+    if (
+        muenzen <
+        s.preis
+    ) {
+
+        alert(
+            "❌ Nicht genug Münzen!"
+        );
+
+        return;
+    }
+
+
+    muenzen -=
+        s.preis;
+
+
+    gekauft[id] =
+        true;
+
+
+    datenVonSchiff(id);
+
+
+    aktuellesSchiff =
+        id;
+
+
+    speichern();
+
+
+    zeichneHangar();
+}
+
+
+/* =====================================================
+   SCHIFF AUSWÄHLEN
+===================================================== */
+
+function selectShip(id) {
+
+    if (
+        !gekauft[id]
+    )
+        return;
+
+
+    aktuellesSchiff =
+        id;
+
+
+    speichern();
+
+
+    zeichneHangar();
+}
+
+
+/* =====================================================
+   UPGRADE-KOSTEN
+===================================================== */
+
+function upgradeKosten(
+    id
+) {
+
+    let daten =
+        datenVonSchiff(id);
+
+
+    return 40 +
+        daten.level * 25;
+}
+
+
+/* =====================================================
+   SPEED UPGRADE
+===================================================== */
+
+function upgradeSpeed() {
+
+    let kosten =
+        upgradeKosten(
+            aktuellesSchiff
+        );
+
+
+    if (
+        muenzen <
+        kosten
+    ) {
+
+        alert(
+            "❌ Nicht genug Münzen!"
+        );
+
+        return;
+    }
+
+
+    muenzen -=
+        kosten;
+
+
+    let daten =
+        datenVonSchiff(
+            aktuellesSchiff
+        );
+
+
+    daten.speedUp++;
+
+    daten.level++;
+
+
+    speichern();
+
+
+    zeichneHangar();
+}
+
+
+/* =====================================================
+   HEALTH UPGRADE
+===================================================== */
+
+function upgradeHealth() {
+
+    let kosten =
+        upgradeKosten(
+            aktuellesSchiff
+        );
+
+
+    if (
+        muenzen <
+        kosten
+    ) {
+
+        alert(
+            "❌ Nicht genug Münzen!"
+        );
+
+        return;
+    }
+
+
+    muenzen -=
+        kosten;
+
+
+    let daten =
+        datenVonSchiff(
+            aktuellesSchiff
+        );
+
+
+    daten.healthUp++;
+
+    daten.level++;
+
+
+    speichern();
+
+
+    zeichneHangar();
+}
+
+
+/* =====================================================
+   WAFFEN UPGRADE
+===================================================== */
+
+function upgradeWeapon() {
+
+    let kosten =
+        upgradeKosten(
+            aktuellesSchiff
+        );
+
+
+    if (
+        muenzen <
+        kosten
+    ) {
+
+        alert(
+            "❌ Nicht genug Münzen!"
+        );
+
+        return;
+    }
+
+
+    muenzen -=
+        kosten;
+
+
+    let daten =
+        datenVonSchiff(
+            aktuellesSchiff
+        );
+
+
+    daten.weaponUp++;
+
+    daten.level++;
+
+
+    speichern();
+
+
+    zeichneHangar();
+}
+
+
+/* =====================================================
+   UPGRADE INFO
+===================================================== */
+
+function aktualisiereUpgradeText() {
+
+    let s =
+        schiffe[
+            aktuellesSchiff
+        ];
+
+
+    let daten =
+        datenVonSchiff(
+            aktuellesSchiff
+        );
+
+
+    let kosten =
+        upgradeKosten(
+            aktuellesSchiff
+        );
+
+
+    document.getElementById(
+        "selectedShipInfo"
+    ).innerHTML = `
+
+        <b style="color:${s.farbe}">
+            ${s.icon} ${s.name}
+        </b>
+
+        – Level ${daten.level}
+
+        <br><br>
+
+        ⚡ Speed-Up:
+        ${daten.speedUp}
+
+        &nbsp; | &nbsp;
+
+        ❤️ Life-Up:
+        ${daten.healthUp}
+
+        &nbsp; | &nbsp;
+
+        🔥 Weapon-Up:
+        ${daten.weaponUp}
+
+        <br><br>
+
+        Nächstes Upgrade:
+        <b>${kosten} 🪙</b>
+    `;
+}
+
+
+/* =====================================================
+   LEBEN KAUFEN
+===================================================== */
+
+function buyLife() {
+
+    let preis = 30;
+
+
+    if (
+        muenzen <
+        preis
+    ) {
+
+        alert(
+            "❌ Nicht genug Münzen!"
+        );
+
+        return;
+    }
+
+
+    muenzen -=
+        preis;
+
+
+    leben++;
+
+    maxLeben =
+        Math.max(
+            maxLeben,
+            leben
+        );
+
+
+    speichern();
+
+
+    document.getElementById(
+        "hangarCoins"
+    ).textContent =
+        muenzen;
+}
+
+
+/* =====================================================
+   HANGAR SCHLIESSEN
+===================================================== */
+
+function closeHangar() {
+
+    document.getElementById(
+        "shop"
+    ).style.display =
+        "none";
+
+
+    if (
+        spieler &&
+        punkte > 0
+    ) {
+
+        spielLaeuft = true;
+
+
+        clearInterval(
+            gegnerTimer
+        );
+
+
+        gegnerTimer =
+            setInterval(
+                neuerGegner,
+                850
+            );
+
+    } else {
+
+        document.getElementById(
+            "startScreen"
+        ).style.display =
+            "flex";
+    }
+}
+
+
+/* =====================================================
+   GAME OVER
+===================================================== */
+
+function gameOver() {
+
+    spielLaeuft = false;
+
+
+    clearInterval(
+        gegnerTimer
+    );
+
+
+    speichern();
+
+
+    document.getElementById(
+        "finalScore"
+    ).textContent =
+
+        "⭐ Punkte: " +
+        punkte +
+        " | 🪙 Münzen: " +
+        muenzen;
+
+
+    document.getElementById(
+        "gameOver"
+    ).style.display =
+        "flex";
+}
+
+
+/* =====================================================
+   HAUPTSCHLEIFE
+===================================================== */
+
+function spiel() {
+
+    update();
+
+    zeichnen();
+
+    requestAnimationFrame(
+        spiel
+    );
+}
+
+
+spiel();
+
+
+/* =====================================================
+   SPEICHER LADEN
+===================================================== */
+
+window.addEventListener(
+    "load",
+    function() {
+
+        zeichneHangar();
+    }
+);
+
+</script>
+
+</body>
+</html>
